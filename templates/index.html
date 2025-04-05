@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>头条文章爬取器(playwright版本)</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='180x180.png') }}"> 
+    <link rel="icon" type="image/png" sizes="180x180" href="{{ url_for('static', filename='180x180.png') }}">
+
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-container {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 10px;
+        }
+        .input-container input {
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            flex-grow: 1;
+            max-width: 400px;
+        }
+        .input-container button {
+            padding: 10px 10px;
+            margin-right: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        .input-container button:hover {
+            background-color: #45a049;
+        }
+        pre {
+            background-color: #f9f9f9;
+            padding: 15px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.5;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+        }
+        
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+        .title-info {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        /* 控制面板样式 */
+        .control-panel {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.7); /* 增加透明度 */
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            width: 180px; /* 减小宽度 */
+            z-index: 1000;
+            display: none; /* 默认隐藏 */
+            font-size: 14px; /* 减小字体大小 */
+        }
+
+        /* 控制面板按钮样式 */
+        .panel-toggle-btn {
+            margin-left: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .control-panel {
+                width: 70%; /* 减小宽度比例 */
+                max-width: 220px;
+                top: 10px;
+                right: 10px;
+            }
+            pre {
+                width: 100vw; /* 占满整个视口宽度 */
+                max-width: 100vw; /* 确保不会超出视口 */
+                margin-left: calc(-50vw + 50%); /* 使元素居中对齐，并延伸到屏幕边缘 */
+                padding: 10px; /* 添加适当的内边距 */
+                box-sizing: border-box; /* 确保内边距不会增加总宽度 */
+                white-space: pre-wrap; /* 保持换行并允许文本自动换行 */
+                overflow-x: hidden; /* 隐藏水平滚动条 */
+                position: relative; /* 确保定位正确 */
+                left: 0; /* 确保左对齐 */
+            }
+            
+            /* 如果需要，可以调整 pre 的父容器 */
+            body, html, .container, .content-area {
+                padding: 0;
+                margin: 0;
+                width: 100%;
+                overflow-x: hidden; /* 防止水平滚动 */
+            }
+        }
+
+        /* 拖动手柄样式 */
+        .drag-handle {
+            height: 16px; /* 减小高度 */
+            background-color: rgba(224, 224, 224, 0.7); /* 增加透明度 */
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: move;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .drag-handle::before {
+            content: "⋮⋮";
+            color: #666;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+
+        .control-panel label {
+            display: block;
+            margin: 4px 0;
+            font-size: 13px; /* 减小字体大小 */
+            color: #333;
+        }
+
+        /* 添加滑动条和数值输入框的容器样式 */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            margin-right: 8px;
+        }
+
+        .slider-container input[type="number"] {
+            width: 45px;
+            padding: 3px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        /* 修改原有的输入框样式 */
+        .control-panel input[type="range"] {
+            margin: 0;
+        }
+
+        .control-panel input[type="number"] {
+            margin: 0;
+            padding: 3px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+
+        .toggle-btn {
+            width: 100%;
+            padding: 4px;
+            margin-bottom: 8px;
+            background-color: rgba(76, 175, 80, 0.8); /* 增加透明度 */
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px; /* 减小字体大小 */
+        }
+        .panel-content {
+            display: block;
+        }
+        .panel-content.collapsed {
+            display: none;
+        }
+        
+        
+
+        
+
+        /* 颜色选择器容器样式 */
+        .color-container {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+        }
+        
+        .color-container input[type="color"] {
+            width: 30px;
+            height: 30px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 0;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .color-container input[type="text"] {
+            flex: 1;
+            padding: 3px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+
+        /* 响应式设计 */
+        @media (max-width: 600px) {
+            .input-container {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .input-container input,
+            .input-container button {
+                width: 300px; 
+                margin-right: 10px;
+                margin-bottom: 10px;
+            }
+
+
+            #div_tag {
+            word-wrap: break-word;  /* 旧版浏览器支持 */
+            overflow-wrap: break-word;  /* 新版标准 */
+            white-space: normal;  /* 确保文本正常换行 */
+            margin: 0 10px 0 10px;
+        }
+
+        #div_tag img {
+            max-width: 90%; /* 缩小图片宽度，留出右边距 */
+            height: auto;
+            display: block;
+            margin: 0 auto; /* 水平居中 */
+        }
+        }
+
+
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover,
+        .close:focus {
+            color: black;
+            text-decoration: none;
+        }
+
+        #contentDisplay {
+            background-color: white;
+            padding: 20px;
+            border: 1px solid #ddd;  /* 添加边框 */
+            border-radius: 8px;      /* 添加圆角 */
+            margin-top: 15px;
+            line-height: 1.6;
+            max-height: 70vh;        /* 限制最大高度为视口高度的70% */
+            overflow-y: auto;        /* 内容过多时显示滚动条 */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);  /* 添加阴影效果 */
+        }
+
+        
+
+        /* 内容容器样式 */
+        .content-container {
+            position: relative;
+            margin-top: 20px;
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+
+
+        /* 扩展内容样式，铺满页面 */
+        .expanded-content {
+            background-color: #F2F0E9;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-top: 15px;
+            line-height: 1.6;
+            min-height: 80vh; /* 至少占据视口高度的80% */
+            overflow-y: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .expanded-content {
+                padding: 15px;
+                min-height: 85vh; /* 在移动设备上占据更多空间 */
+            }
+        }
+
+        /* 全页面内容样式 - 直接铺满页面，没有方框边界 */
+        .full-page-content {
+            padding: 20px 0; /* 只保留上下内边距，移除左右内边距 */
+            margin-top: 15px;
+            line-height: 1.6;
+            background-color: transparent; /* 透明背景 */
+            border: none; /* 移除边框 */
+            box-shadow: none; /* 移除阴影 */
+            width: 100%; /* 占满容器宽度 */
+        }
+
+        /* 修改容器样式，使内容可以更宽 */
+        .container {
+            max-width: 1000px; /* 增加最大宽度 */
+            margin: 0 auto;
+            background-color: transparent; /* 容器背景透明 */
+            padding: 20px;
+            border-radius: 0; /* 移除圆角 */
+            box-shadow: none; /* 移除阴影 */
+        }
+
+        /* 修改整体页面背景 */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #F2F0E9; /* 设置整个页面的背景色 */
+            color: #333; /* 文本颜色 */
+        }
+
+        /* 确保内容区域有足够的高度 */
+        #contentDisplay {
+            min-height: 70vh; /* 至少占据视口高度的70% */
+        }
+
+        /* 响应式调整 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .full-page-content {
+                padding: 10px 0;
+            }
+        }
+
+        
+
+        /* 悬浮球样式 */
+        .floating_jump_ball {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(76, 175, 80, 0.8);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s ease;
+            user-select: none;
+            touch-action: none;
+            pointer-events: auto;
+            text-decoration: none;
+        }
+        
+        
+        /* 悬浮按钮球样式 */
+        .floating_button_ball {
+            position: fixed;
+            bottom: 60px;
+            right: 30px;
+            width: 50px;
+            height: 50px;
+            background-color: rgba(76, 175, 80, 0.8);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            z-index: 9999;
+            transition: all 0.3s ease;
+            user-select: none;
+            touch-action: none;
+            pointer-events: auto;
+            text-decoration: none;
+        }
+
+
+        input::placeholder {
+            color: #999; !important/* 使用浅灰色 */
+            opacity: 1; !important /* 确保不透明 */
+        }
+
+
+        #div_tag {
+            word-wrap: break-word;  /* 旧版浏览器支持 */
+            overflow-wrap: break-word;  /* 新版标准 */
+            white-space: normal;  /* 确保文本正常换行 */
+            margin: 0 10px 0 10px;
+        }
+
+        #div_tag img {
+            max-width: 90%; /* 缩小图片宽度，留出右边距 */
+            height: auto;
+            display: block;
+            margin: 0 auto; /* 水平居中 */
+            box-sizing: border-box;
+        }
+
+        /* 阅读进度条样式 */
+        .reading-progress-bar {
+            position: fixed;
+            right: 0;
+            top: 0;
+            width: 4px;
+            height: 0;
+            background-color:#4caf50;
+            z-index: 9999;
+            transition: height 0.1s;
+        }
+        
+        /* 在移动设备上调整进度条 */
+        @media (max-width: 768px) {
+            .reading-progress-bar {
+                width: 10px;
+            }
+
+
+            .jznr_btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            /* padding: 10px 20px; */
+            cursor: pointer;    
+            /* margin-right: 10px; */
+            /* margin-right: 5%; */
+            width: 100px;
+
+            #div_tag {
+            word-wrap: break-word;  /* 旧版浏览器支持 */
+            overflow-wrap: break-word;  /* 新版标准 */
+            white-space: normal;  /* 确保文本正常换行 */
+            margin: 0 10px 0 10px;
+        }
+
+        #div_tag img {
+            max-width: 97%;
+            height: auto;
+            display: block;
+            margin: 0 auto;
+            margin: 0 10px 0 10px;
+
+        }
+        }
+
+        }
+
+        .jznr_btn {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            /* padding: 10px 20px; */
+            cursor: pointer;    
+            /* margin-right: 10px; */
+            width: 100px;
+        }
+        
+    </style>
+</head>
+<body>
+    <!-- 添加阅读进度条 -->
+    <div class="reading-progress-bar" id="readingProgressBar"></div>
+    
+    <!-- 实际的显示区域 -->
+    <div class="container">
+        <h1>头条文章爬取器(Playwright版本)</h1>
+        
+
+        <!-- 或者保留原有的URL输入区域作为备选 -->
+        <div class="input-container">
+            <form method="POST" action="/" id="urlForm">
+                <input type="text" id="urlInput" name="url" placeholder="或直接输入头条文章的网址" style="width: 300px;">
+                <button class="jznr_btn" type="submit" style="margin-right:10px;">加载内容</button>
+            </form>
+
+        </div>
+        
+        
+        <!-- 使用div替代p标签 -->
+        <div id="div_tag" >
+            {% if title %}<h2>{{ title }}</h2>{% endif %}
+            
+            
+            {% if content %}{{ content | safe }}{% endif %}
+        </div>
+    </div>
+
+    <!-- 控制面板 -->
+    <div class="control-panel">
+        <div class="drag-handle" id="dragHandle"></div>
+        <button id="togglePanel" class="toggle-btn">▲ 控制面板</button>
+        <div class="panel-content">
+            <label for="fontSize">字体大小 (px):</label>
+            <div class="slider-container">
+                <input type="range" id="fontSize" min="12" max="80" value="16">
+                <input type="number" id="fontSizeInput" min="12" max="80" value="16">
+            </div>
+
+            <label for="letterSpacing">字间距 (px):</label>
+            <div class="slider-container">
+                <input type="range" id="letterSpacing" min="0" max="90" value="1" step="0.1">
+                <input type="number" id="letterSpacingInput" min="0" max="90" value="1" step="0.1">
+            </div>
+
+            <label for="lineHeight">行间距 (em):</label>
+            <div class="slider-container">
+                <input type="range" id="lineHeight" min="1" max="6" value="1.5" step="0.1">
+                <input type="number" id="lineHeightInput" min="1" max="6" value="1.5" step="0.1">
+            </div>
+            
+           
+        </div>
+    </div>
+
+  
+
+
+    <!-- 悬浮按钮控制控制面板 -->
+    <div id="floating_button"   class="floating_button_ball" style="font-size: 30px;">
+    </div>  
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 获取控制面板相关元素
+            const controlPanel = document.querySelector('.control-panel');
+            const togglePanel = document.getElementById('togglePanel');
+            const panelContent = document.querySelector('.panel-content');
+            const dragHandle = document.getElementById('dragHandle');
+
+            const floatingButton = document.getElementById('floating_button');
+            
+            // 阅读进度条相关元素
+            const progressBar = document.getElementById('readingProgressBar');
+            
+            // 更新阅读进度条函数
+            function updateReadingProgress() {
+                const windowHeight = window.innerHeight;
+                const documentHeight = document.documentElement.scrollHeight - windowHeight;
+                const scrollTop = window.scrollY;
+                const progress = (scrollTop / documentHeight) * 100;
+                progressBar.style.height = `${progress}%`;
+                floatingButton.textContent = `${Math.round(progress)}`;
+            }
+            
+            // 监听滚动事件以更新进度条
+            window.addEventListener('scroll', updateReadingProgress);
+            // 页面加载和调整大小时更新进度条
+            window.addEventListener('load', updateReadingProgress);
+            window.addEventListener('resize', updateReadingProgress);
+            
+            // 获取表单输入元素
+            const urlInput = document.getElementById('urlInput');
+            const urlForm = document.getElementById('urlForm');
+            
+            // 字体大小控制
+            const fontSizeSlider = document.getElementById('fontSize');
+            const fontSizeInput = document.getElementById('fontSizeInput');
+            const contentDisplay = document.getElementById('div_tag');
+            
+            // 字间距控制
+            const letterSpacingSlider = document.getElementById('letterSpacing');
+            const letterSpacingInput = document.getElementById('letterSpacingInput');
+            
+            // 行间距控制
+            const lineHeightSlider = document.getElementById('lineHeight');
+            const lineHeightInput = document.getElementById('lineHeightInput');
+            
+            // 设置对象，用于保存所有设置
+            let settings = {
+                fontSize: '16',
+                letterSpacing: '1',
+                lineHeight: '1.5',
+            };
+            
+            // 从localStorage加载设置
+            function loadSettings() {
+                const savedSettings = localStorage.getItem('bibleReaderSettings');
+                if (savedSettings) {
+                    settings = JSON.parse(savedSettings);
+                    
+                    // 应用设置到控件
+                    fontSizeSlider.value = settings.fontSize;
+                    fontSizeInput.value = settings.fontSize;
+                    letterSpacingSlider.value = settings.letterSpacing;
+                    letterSpacingInput.value = settings.letterSpacing;
+                    lineHeightSlider.value = settings.lineHeight;
+                    lineHeightInput.value = settings.lineHeight;
+                    
+                    // 应用设置到内容显示区域
+                    applySettings(contentDisplay);
+                }
+            }
+            
+            // 保存设置到localStorage
+            function saveSettings() {
+                localStorage.setItem('bibleReaderSettings', JSON.stringify(settings));
+            }
+            
+            // 应用设置到指定元素及其所有子元素
+            function applySettings(element) {
+                console.log('应用设置：字体大小=' + settings.fontSize + ', 字间距=' + settings.letterSpacing + ', 行高=' + settings.lineHeight);
+                
+                // 首先清理所有之前添加的样式
+                cleanupPreviousStyling(element);
+                
+                // 设置基础样式（字体大小和行高）
+                element.style.fontSize = `${settings.fontSize}px`;
+                element.style.letterSpacing = `${settings.letterSpacing}px`;
+                element.style.lineHeight = settings.lineHeight;
+                
+                // 处理所有英文单词，将letterSpacing设置为0px
+                processTextNodesForEnglish(element);
+            }
+            
+            // 清理之前应用的所有样式
+            function cleanupPreviousStyling(element) {
+                // 查找所有带有特定样式的span标签
+                const styledSpans = element.querySelectorAll('span[style*="letter-spacing"]');
+                
+                // 处理每个找到的span标签
+                styledSpans.forEach(span => {
+                    // 获取span的内容
+                    const content = span.textContent;
+                    // 创建文本节点替换这个span
+                    const textNode = document.createTextNode(content);
+                    // 替换节点
+                    span.parentNode.replaceChild(textNode, span);
+                });
+                
+                // 处理完成后，合并相邻的文本节点
+                element.normalize();
+            }
+            
+           
+            // 处理文本节点以将英文单词的letterSpacing设置为0px
+            function processTextNodesForEnglish(element) {
+                // 使用TreeWalker遍历所有文本节点
+                const walker = document.createTreeWalker(
+                    element,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
+                
+                // 收集需要处理的文本节点
+                const textNodes = [];
+                let node;
+                while (node = walker.nextNode()) {
+                    if (node.nodeValue.trim() !== '') {
+                        textNodes.push(node);
+                    }
+                }
+                
+                // 处理收集到的文本节点
+                textNodes.forEach(textNode => {
+                    const text = textNode.nodeValue;
+                    
+                    // 检查是否包含英文字符
+                    const regex = /[a-zA-Z0-9\-_\.\/:?=+*()\[\]{},;'"]+/;
+                    if (!regex.test(text)) {
+                        return; // 如果不包含英文，跳过处理
+                    }
+                    
+                    // 创建文档片段来保存处理后的内容
+                    const fragment = document.createDocumentFragment();
+                    
+                    // 匹配英文单词的正则表达式
+                    const pattern = /(\b[a-zA-Z0-9\-_\.\/:?=+*()\[\]{},;'"]+\b)/g;
+                    
+                    let lastIndex = 0;
+                    let match;
+                    
+                    // 处理所有英文单词匹配项
+                    while ((match = pattern.exec(text)) !== null) {
+                        // 添加匹配前的非英文内容
+                        if (match.index > lastIndex) {
+                            fragment.appendChild(
+                                document.createTextNode(text.substring(lastIndex, match.index))
+                            );
+                        }
+                        
+                        // 创建带有letterSpacing为0px的span，包含英文单词
+                        const englishSpan = document.createElement('span');
+                        englishSpan.style.letterSpacing = '0px';
+                        englishSpan.textContent = match[0];
+                        fragment.appendChild(englishSpan);
+                        
+                        lastIndex = pattern.lastIndex;
+                    }
+                    
+                    // 添加剩余的非英文内容
+                    if (lastIndex < text.length) {
+                        fragment.appendChild(
+                            document.createTextNode(text.substring(lastIndex))
+                        );
+                    }
+                    
+                    // 替换原始文本节点
+                    textNode.parentNode.replaceChild(fragment, textNode);
+                });
+            }
+            
+            floatingButton.addEventListener('click', function() {
+                controlPanel.style.display = controlPanel.style.display === 'none' || controlPanel.style.display === '' ? 'block' : 'none';
+            });
+
+            // 折叠/展开控制面板内容
+            togglePanel.addEventListener('click', function() {
+                panelContent.classList.toggle('collapsed');
+                togglePanel.textContent = panelContent.classList.contains('collapsed') ? '▼ 控制面板' : '▲ 控制面板';
+            });
+            
+            // 字体大小控制
+            fontSizeSlider.addEventListener('input', function() {
+                console.log('字体大小改变:', this.value);
+                settings.fontSize = this.value;
+                fontSizeInput.value = settings.fontSize;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            fontSizeInput.addEventListener('input', function() {
+                settings.fontSize = this.value;
+                fontSizeSlider.value = settings.fontSize;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            // 字间距控制
+            letterSpacingSlider.addEventListener('input', function() {
+                settings.letterSpacing = this.value;
+                letterSpacingInput.value = settings.letterSpacing;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            letterSpacingInput.addEventListener('input', function() {
+                settings.letterSpacing = this.value;
+                letterSpacingSlider.value = settings.letterSpacing;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            // 行间距控制
+            lineHeightSlider.addEventListener('input', function() {
+                settings.lineHeight = this.value;
+                lineHeightInput.value = settings.lineHeight;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            lineHeightInput.addEventListener('input', function() {
+                settings.lineHeight = this.value;
+                lineHeightSlider.value = settings.lineHeight;
+                applySettings(contentDisplay);
+                saveSettings();
+            });
+            
+            // 拖动控制面板功能
+            let isDragging = false;
+            let offsetX, offsetY;
+            
+            dragHandle.addEventListener('mousedown', function(e) {
+                isDragging = true;
+                offsetX = e.clientX - controlPanel.getBoundingClientRect().left;
+                offsetY = e.clientY - controlPanel.getBoundingClientRect().top;
+            });
+            
+            document.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const x = e.clientX - offsetX;
+                const y = e.clientY - offsetY;
+                
+                controlPanel.style.left = x + 'px';
+                controlPanel.style.top = y + 'px';
+                controlPanel.style.right = 'auto'; // 取消右侧定位
+            });
+            
+            document.addEventListener('mouseup', function() {
+                isDragging = false;
+            });
+
+            // 初始化控制面板状态
+            controlPanel.style.display = 'none'; // 默认隐藏控制面板
+            
+            // 加载保存的设置
+            loadSettings();
+
+            // 悬浮球功能
+
+            // 检测是否是移动设备
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+
+            // 使悬浮球可拖动
+            let isDraggingBall = false;
+            let ballOffsetX, ballOffsetY;
+            let hasMoved = false;
+
+            // 如果是移动设备，重置悬浮球位置到默认位置
+            if (isMobile) {
+                floatingButton.style.left = 'auto';
+                floatingButton.style.top = 'auto';
+                floatingButton.style.right = '20px';
+                floatingButton.style.bottom = '80px';
+                
+                // 清除可能存在的保存位置
+                localStorage.removeItem('floatingButtonPosition');
+            }
+
+            // 修改触摸事件处理
+            floatingButton.addEventListener('touchstart', function(e) {
+                isDraggingBall = true;
+                hasMoved = false;
+                ballOffsetX = e.touches[0].clientX - floatingButton.getBoundingClientRect().left;
+                ballOffsetY = e.touches[0].clientY - floatingButton.getBoundingClientRect().top;
+                // 不要在这里阻止默认行为，这会导致点击事件无法触发
+            });
+
+            floatingButton.addEventListener('touchmove', function(e) {
+                if (!isDraggingBall) return;
+                
+                hasMoved = true;
+                
+                const x = e.touches[0].clientX - ballOffsetX;
+                const y = e.touches[0].clientY - ballOffsetY;
+                
+                // 确保悬浮球不会超出屏幕边界
+                const maxX = window.innerWidth - floatingButton.offsetWidth;
+                const maxY = window.innerHeight - floatingButton.offsetHeight;
+                
+                const boundedX = Math.max(0, Math.min(x, maxX));
+                const boundedY = Math.max(0, Math.min(y, maxY));
+                
+                floatingButton.style.left = boundedX + 'px';
+                floatingButton.style.bottom = 'auto';
+                floatingButton.style.top = boundedY + 'px';
+                floatingButton.style.right = 'auto';
+                
+                e.preventDefault(); // 现在可以阻止默认行为，因为我们确定是在拖动
+            });
+
+            floatingButton.addEventListener('touchend', function(e) {
+                if (isDraggingBall) {
+                    if (!hasMoved) {
+                        // 如果没有移动，则是点击，不需要做任何事情，让默认的锚点行为发生
+                    } else {
+                        // 如果移动了，保存位置
+                        saveBallPosition();
+                    }
+                    isDraggingBall = false;
+                }
+            });
+
+            // 修改加载位置函数，确保位置在视口内
+            function loadBallPosition() {
+                const savedPosition = localStorage.getItem('floatingButtonPosition');
+                if (savedPosition && !isMobile) { // 只在非移动设备上加载保存的位置
+                    const position = JSON.parse(savedPosition);
+                    
+                    // 检查保存的位置是否在当前视口内
+                    const viewportWidth = window.innerWidth;
+                    const viewportHeight = window.innerHeight;
+                    
+                    // 解析位置值为数字
+                    let left = parseInt(position.left);
+                    let top = parseInt(position.top);
+                    
+                    // 如果不是有效数字或超出视口，使用默认位置
+                    if (isNaN(left) || left < 0 || left > viewportWidth - 50) {
+                        floatingButton.style.left = 'auto';
+                        floatingButton.style.right = '30px';
+                    } else {
+                        floatingButton.style.left = position.left;
+                        floatingButton.style.right = 'auto';
+                    }
+                    
+                    if (isNaN(top) || top < 0 || top > viewportHeight - 50) {
+                        floatingButton.style.top = 'auto';
+                        floatingButton.style.bottom = '30px';
+                    } else {
+                        floatingButton.style.top = position.top;
+                        floatingButton.style.bottom = 'auto';
+                    }
+                }
+            }
+
+            // 保存悬浮球位置
+            function saveBallPosition() {
+                const position = {
+                    left: floatingButton.style.left,
+                    top: floatingButton.style.top
+                };
+                localStorage.setItem('floatingButtonPosition', JSON.stringify(position));
+            }
+
+            // 加载保存的位置
+            loadBallPosition();
+
+            
+            
+        });
+    </script>
+</body>
+</html>
