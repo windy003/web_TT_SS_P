@@ -96,7 +96,7 @@ def load_from_url(url):
 
 
             # 向下滚动以加载更多内容
-            for _ in range(20):  # 根据需要调整滚动次数
+            for _ in range(15):  # 根据需要调整滚动次数
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
