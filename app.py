@@ -111,7 +111,7 @@ def load_from_url(url):
                     break
                     
 
-            content += publish_time
+            content += publish_time + "<br>"
             # 获取文章作者
             author = ""
             author_selectors = ["div.article-meta a", "div.author", "span.name"]
@@ -121,7 +121,7 @@ def load_from_url(url):
                     author = element.inner_text().strip()
                     break
             
-            content += author
+            content += author + "<br>"
             # 获取文章正文内容
             article_element = page.query_selector("article")
             
