@@ -100,7 +100,7 @@ def load_from_url(url):
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
-            content += title
+            content += title + "<br>"
             # 获取文章发布时间
             publish_time = ""
             time_selectors = ["span.pubtime", "div.publication-time", "div.article-meta span"]
