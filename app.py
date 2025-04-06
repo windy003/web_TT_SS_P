@@ -8,7 +8,7 @@ import os
 import json
 import traceback
 from playwright.sync_api import sync_playwright
-
+import gunicorn
 
 
 app = Flask(__name__)
@@ -205,4 +205,5 @@ def save_content(content):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5008, debug=True) 
+    from waitress import serve
+    serve(app, host='0.0.0.0', port=5008) 
