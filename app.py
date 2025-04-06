@@ -100,7 +100,7 @@ def load_from_url(url):
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
-            content += title + "<br>"
+            content += title + "<br><br>"
             # 获取文章发布时间
             publish_time = ""
             time_selectors = ["span.pubtime", "div.publication-time", "div.article-meta span"]
@@ -111,7 +111,7 @@ def load_from_url(url):
                     break
                     
 
-            content += publish_time + "<br>"
+            content += publish_time + "<br><br>"
             # 获取文章作者
             author = ""
             author_selectors = ["div.article-meta a", "div.author", "span.name"]
@@ -121,7 +121,7 @@ def load_from_url(url):
                     author = element.inner_text().strip()
                     break
             
-            content += author + "<br>"
+            content += author + "<br><br>"
             # 获取文章正文内容
             article_element = page.query_selector("article")
             
