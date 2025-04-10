@@ -29,7 +29,7 @@ def index():
 
     if request.method == 'POST':
         if 'url' in request.form:
-            url = request.form['url'].strip()
+            url = request.form['url'].strip().split("%")[0]
             print(f"url: {url}")
             if url_old:
                 if url == url_old:
