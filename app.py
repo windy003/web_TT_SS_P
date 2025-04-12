@@ -82,7 +82,6 @@ def load_from_url(url):
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
-<<<<<<< HEAD
             content += title + "<br><br>"
             # 获取文章发布时间
             publish_time = ""
@@ -137,21 +136,6 @@ def load_from_url(url):
                         for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
                             li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
                             content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
-=======
-            
-            # 获取元素对象
-            article_content = page.query_selector(".article-content")
-
-            # 检查元素是否存在
-            if article_content is not None:
-                # 获取元素的内容
-                content = article_content.inner_html()  # 获取内部 HTML
-                # 或者
-                # content = article_content.outer_html()  # 获取完整 HTML
-                print(content)
-            else:
-                print("article-content 元素未找到")
->>>>>>> f19a2d83387de57e1a0e28156de717e2b3ddd26b
             
             save_content(content)
             return render_template('index.html',content=content)
