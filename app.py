@@ -65,6 +65,15 @@ def load_from_url(url):
             # 等待文章内容加载
             page.wait_for_selector("article", state="visible", timeout=10000)
             
+
+            
+            content = ""
+
+            # 获取文章标题
+            title = page.query_selector("h1").inner_text() if page.query_selector("h1") else "无标题"
+        
+
+            
             
 
             # 点击展开按钮
