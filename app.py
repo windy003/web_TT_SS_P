@@ -118,8 +118,8 @@ def load_from_url(url):
             
             if article_element:
                 # 遍历 article_element 内的所有标签
-                for element in article_element.query_selector_all("*"):  # 获取所有子元素
-                    tag_name = element.evaluate("el => el.tagName").strip().lower()  # 获取标签名并转换为小写
+                for element in article_element.query_selector_all(":scope > *"):  # 获取 article 的直接子元素
+                    tag_name = element.evaluate("el => el.tagName").strip().lower()
                     if tag_name == "p":
                         # 处理 p 标签
                         paragraph_text = element.inner_text().strip()
@@ -145,6 +145,23 @@ def load_from_url(url):
                         for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
                             li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
                             content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
+                    elif tag_name == "ul":
+                        content += "<br><br>"
+                        li_elements = element.query_selector_all("li")  # 获取所有 li 元素
+                        for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
+                            li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
+                            content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
+                        content += "<br>"
+                        
+                    elif tag_name == "li":
+                        content += "<br>"
+                        content += element.inner_text().strip()
+                        content += "<br>"
+            
+            
+            
+            
+            
             
             save_content(content)
             return render_template('index.html',content=content)
