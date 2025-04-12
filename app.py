@@ -78,13 +78,23 @@ def load_from_url(url):
 
 
             # 向下滚动以加载更多内容
-            for _ in range(15):  # 根据需要调整滚动次数
+            for _ in range(10):  # 根据需要调整滚动次数
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
             
-            content = page.query_selector("article-content").outer_html()
+            # 获取元素对象
+            article_content = page.query_selector(".article-content")
 
+            # 检查元素是否存在
+            if article_content is not None:
+                # 获取元素的内容
+                content = article_content.inner_html()  # 获取内部 HTML
+                # 或者
+                # content = article_content.outer_html()  # 获取完整 HTML
+                print(content)
+            else:
+                print("article-content 元素未找到")
             
             save_content(content)
             return render_template('index.html',content=content)
@@ -142,3 +152,4 @@ def save_content(content):
 if __name__ == '__main__':
     from waitress import serve
     serve(app, host='0.0.0.0', port=5008) 
+    # app.run(host='0.0.0.0', port=5008)
