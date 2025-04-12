@@ -49,14 +49,6 @@ def index():
 
 
 def load_from_url(url):
-    """
-    使用 Playwright 爬取指定头条文章链接的内容
-    
-    参数:
-        url: 头条文章的URL
-    返回:
-        包含文章内容的字典
-    """
     with sync_playwright() as p:
         # 启动浏览器
         browser = p.chromium.launch(headless=False)  # 设置 headless=True 可以隐藏浏览器窗口
@@ -74,18 +66,8 @@ def load_from_url(url):
             page.wait_for_selector("article", state="visible", timeout=10000)
             
             
-            # page.wait_for_timeout(5000)
 
-
-            content = ""
-
-            # 获取文章标题
-            title = page.query_selector("h1").inner_text() if page.query_selector("h1") else "无标题"
-        
-
-            
-
-
+            # 点击展开按钮
             try:
                 expand_button = page.locator("button", has_text="点击展开剩余")
                 if expand_button.count() > 0:  # 检查按钮是否存在
@@ -100,56 +82,9 @@ def load_from_url(url):
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
-            content += title + "<br><br>"
-            # 获取文章发布时间
-            publish_time = ""
-            time_selectors = ["span.pubtime", "div.publication-time", "div.article-meta span"]
-            for selector in time_selectors:
-                element = page.query_selector(selector)
-                if element:
-                    publish_time = element.inner_text().strip()
-                    break
-                    
+            
+            content = page.query_selector("article-content").outer_html()
 
-            content += publish_time + "<br><br>"
-            # 获取文章作者
-            author = ""
-            author_selectors = ["div.article-meta a", "div.author", "span.name"]
-            for selector in author_selectors:
-                element = page.query_selector(selector)
-                if element:
-                    author = element.inner_text().strip()
-                    break
-            
-            content += author + "<br><br>"
-            # 获取文章正文内容
-            article_element = page.query_selector("article")
-            
-            if article_element:
-                # 遍历 article_element 内的所有标签
-                for element in article_element.query_selector_all("*"):  # 获取所有子元素
-                    tag_name = element.evaluate("el => el.tagName").strip().lower()  # 获取标签名并转换为小写
-                    if tag_name == "p":
-                        # 处理 p 标签
-                        paragraph_text = element.inner_text().strip()
-                        print(f"段落内容: {paragraph_text}")
-                        content += paragraph_text # 将段落内容添加到正文中
-                        
-                    elif tag_name == "img":
-                        content += element.evaluate("el => el.outerHTML")  # 获取元素的完整 HTML
-                    elif tag_name == "section":
-                        # 处理 section 标签
-                        section_content = element.inner_text().strip()
-                        print(f"段落内容: {section_content}")
-                        content += section_content   # 将段落内容添加到正文中
-                    elif tag_name == "h1":
-                        content += element.inner_text().strip()
-                    elif tag_name == "div":
-                        has_specific_class = element.evaluate("el => el.classList.contains('weitoutiao-html')")
-                        if has_specific_class:
-                            content += element.inner_text().strip()
-            
-            
             
             save_content(content)
             return render_template('index.html',content=content)
