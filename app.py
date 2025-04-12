@@ -9,6 +9,7 @@ import json
 import traceback
 from playwright.sync_api import sync_playwright
 import gunicorn
+import traceback
 
 
 app = Flask(__name__)
@@ -31,16 +32,36 @@ def index():
         if 'url' in request.form:
             url = request.form['url'].strip().split("%")[0]
             print(f"url: {url}")
+            if url.startswith("https://m.toutiao.com/is/")or url.startswith("https://toutiao.com/is/"):
+                is_wenzhang = True
+            else:
+                is_wenzhang = False
             if url_old:
                 if url == url_old:
                     print("url 相同,使用content_old")
                     return render_template('index.html',content=content_old)
                 else:
+                    if is_wenzhang:
+                        save_url(url)
+                        print(f"url: {url}")
+                        print(f"old_url: {url_old}")
+                        return load_wenzhang_from_url(url)
+                    else:
+                        save_url(url)
+                        print(f"url: {url}")
+                        print(f"old_url: {url_old}")
+                        return load_wtt_from_url(url)
+            else:
+                if is_wenzhang:
                     save_url(url)
                     print(f"url: {url}")
                     print(f"old_url: {url_old}")
-                    return load_from_url(url)
-            else:
+                    return load_wenzhang_from_url(url)
+                else:
+                    save_url(url)
+                    print(f"url: {url}")
+                    print(f"old_url: {url_old}")
+                    return load_wtt_from_url(url)
                 save_url(url)
                 return load_from_url(url)
     
@@ -48,7 +69,7 @@ def index():
 
 
 
-def load_from_url(url):
+def load_wenzhang_from_url(url):
     with sync_playwright() as p:
         # 启动浏览器
         browser = p.chromium.launch(headless=False)  # 设置 headless=True 可以隐藏浏览器窗口
@@ -135,10 +156,8 @@ def load_from_url(url):
                         content += section_content   # 将段落内容添加到正文中
                     elif tag_name == "h1":
                         content += element.inner_text().strip()
-                    elif tag_name == "div":
-                        has_specific_class = element.evaluate("el => el.classList.contains('weitoutiao-html')")
-                        if has_specific_class:
-                            content += element.inner_text().strip()
+                    elif tag_name == "div" and element.evaluate("el => el.classList.contains('weitoutiao-html')"):
+                        content += element.inner_text().strip()
                     elif tag_name == "ol":
                         content += "<br>"
                         li_elements = element.query_selector_all("li")  # 获取所有 li 元素
@@ -169,6 +188,42 @@ def load_from_url(url):
         except Exception as e:
             print(f"爬取文章时出错: {e}")
             
+        finally:
+            browser.close()
+
+
+def load_wtt_from_url(url):
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=False)
+        context = browser.new_context(
+            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
+        )
+        page = context.new_page()   
+
+        try:
+            page.goto(url, wait_until="networkidle", timeout=60000)
+            
+            # 等待文章内容加载
+            page.wait_for_selector("article", state="visible", timeout=10000)
+
+            content = ""
+
+            article_element = page.query_selector("article")
+            if article_element:
+                # 遍历 article_element 内的所有标签
+                for element in article_element.query_selector_all(":scope > *"):  # 获取 article 的直接子元素
+                    tag_name = element.evaluate("el => el.tagName").strip().lower()
+                    if tag_name == "div" and element.evaluate("el => el.classList.contains('weitoutiao-html')"):
+                        content += element.inner_text().strip()
+                    elif tag_name == "div" and element.evaluate("el => el.classList.contains('image-list')"):
+                        content += element.inner_html()
+                
+            save_content(content)
+            return render_template('index.html',content=content)
+
+        except Exception as e:
+            print(f"爬取文章时出错: {e}")
+            traceback.print_exc()
         finally:
             browser.close()
 
