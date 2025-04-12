@@ -49,14 +49,6 @@ def index():
 
 
 def load_from_url(url):
-    """
-    使用 Playwright 爬取指定头条文章链接的内容
-    
-    参数:
-        url: 头条文章的URL
-    返回:
-        包含文章内容的字典
-    """
     with sync_playwright() as p:
         # 启动浏览器
         browser = p.chromium.launch(headless=False)  # 设置 headless=True 可以隐藏浏览器窗口
@@ -96,7 +88,7 @@ def load_from_url(url):
 
 
             # 向下滚动以加载更多内容
-            for _ in range(15):  # 根据需要调整滚动次数
+            for _ in range(10):  # 根据需要调整滚动次数
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
@@ -148,8 +140,12 @@ def load_from_url(url):
                         has_specific_class = element.evaluate("el => el.classList.contains('weitoutiao-html')")
                         if has_specific_class:
                             content += element.inner_text().strip()
-            
-            
+                    elif tag_name == "ol":
+                        content += "<br>"
+                        li_elements = element.query_selector_all("li")  # 获取所有 li 元素
+                        for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
+                            li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
+                            content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
             
             save_content(content)
             return render_template('index.html',content=content)
