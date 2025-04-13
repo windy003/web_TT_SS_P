@@ -32,7 +32,7 @@ def index():
         if 'url' in request.form:
             url = request.form['url'].strip().split("%")[0]
             print(f"url: {url}")
-            if url.startswith("https://m.toutiao.com/is/")or url.startswith("https://toutiao.com/is/"):
+            if url.startswith("https://m.toutiao.com/is/")or url.startswith("https://toutiao.com/is/")or url.startswith("https://www.toutiao.com/article/") or url.startswith("https://toutiao.com/article/"):
                 is_wenzhang = True
             else:
                 is_wenzhang = False
@@ -62,12 +62,8 @@ def index():
                     print(f"url: {url}")
                     print(f"old_url: {url_old}")
                     return load_wtt_from_url(url)
-                save_url(url)
-                return load_from_url(url)
-    
+
     return render_template('index.html')
-
-
 
 def load_wenzhang_from_url(url):
     with sync_playwright() as p:
@@ -87,8 +83,7 @@ def load_wenzhang_from_url(url):
             page.wait_for_selector("article", state="visible", timeout=10000)
             
 
-            
-            content = ""
+            content = []
 
             # 获取文章标题
             title = page.query_selector("h1").inner_text() if page.query_selector("h1") else "无标题"
@@ -112,7 +107,7 @@ def load_wenzhang_from_url(url):
                 page.evaluate("window.scrollBy(0, window.innerHeight)")
                 time.sleep(1)
 
-            content += title + "<br><br>"
+            content.append(title)
             # 获取文章发布时间
             publish_time = ""
             time_selectors = ["span.pubtime", "div.publication-time", "div.article-meta span"]
@@ -123,7 +118,7 @@ def load_wenzhang_from_url(url):
                     break
                     
 
-            content += publish_time + "<br><br>"
+            content.append(publish_time)
             # 获取文章作者
             author = ""
             author_selectors = ["div.article-meta a", "div.author", "span.name"]
@@ -133,63 +128,81 @@ def load_wenzhang_from_url(url):
                     author = element.inner_text().strip()
                     break
             
-            content += author + "<br><br>"
+            content.append(author)
             # 获取文章正文内容
             article_element = page.query_selector("article")
             
             if article_element:
-                # 遍历 article_element 内的所有标签
-                for element in article_element.query_selector_all(":scope > *"):  # 获取 article 的直接子元素
-                    tag_name = element.evaluate("el => el.tagName").strip().lower()
-                    if tag_name == "p":
-                        # 处理 p 标签
-                        paragraph_text = element.inner_text().strip()
-                        print(f"段落内容: {paragraph_text}")
-                        content += paragraph_text # 将段落内容添加到正文中
-                        
-                    elif tag_name == "img":
-                        content += element.evaluate("el => el.outerHTML")  # 获取元素的完整 HTML
-                    elif tag_name == "section":
-                        # 处理 section 标签
-                        section_content = element.inner_text().strip()
-                        print(f"段落内容: {section_content}")
-                        content += section_content   # 将段落内容添加到正文中
-                    elif tag_name == "h1":
-                        content += element.inner_text().strip()
-                    elif tag_name == "div" and element.evaluate("el => el.classList.contains('weitoutiao-html')"):
-                        content += element.inner_text().strip()
-                    elif tag_name == "ol":
-                        content += "<br>"
-                        li_elements = element.query_selector_all("li")  # 获取所有 li 元素
-                        for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
-                            li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
-                            content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
-                    elif tag_name == "ul":
-                        content += "<br><br>"
-                        li_elements = element.query_selector_all("li")  # 获取所有 li 元素
-                        for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
-                            li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
-                            content += f"{index}. {li_text}<br>"  # 添加序号和文本到 content
-                        content += "<br>"
-                        
-                    elif tag_name == "li":
-                        content += "<br>"
-                        content += element.inner_text().strip()
-                        content += "<br>"
+               return scan_element(article_element,content)
             
             
-            
-            
-            
-            
-            save_content(content)
-            return render_template('index.html',content=content)
             
         except Exception as e:
             print(f"爬取文章时出错: {e}")
+            traceback.print_exc()
             
         finally:
             browser.close()
+
+
+def scan_element(element,content):
+
+    try:
+        for ele in element.query_selector_all(":scope > *"):
+            tag_name = ele.evaluate("el => el.tagName").strip().lower()
+            if tag_name == "p":
+            # 处理 p 标签
+                # print(f"段落内容: {paragraph_text}")
+                paragraph_text = ele.evaluate("el => el.textContent").strip()
+                if paragraph_text and paragraph_text not in content:
+                    content.append(paragraph_text) # 将段落内容添加到正文中
+                scan_element(ele,content)
+            elif tag_name == "img":
+                content.append(ele.evaluate("el => el.outerHTML"))  # 获取元素的完整 HTML
+            elif tag_name == "section":
+                # 处理 section 标签
+                section_content = ele.evaluate("el => el.textContent").strip()
+                # print(f"段落内容: {section_content}")
+                if section_content and section_content not in content:
+                    content.append(section_content)   # 将段落内容添加到正文中
+                scan_element(ele,content)
+            elif tag_name == "h1":
+                content.append(ele.evaluate("el => el.textContent").strip())
+            elif tag_name == "div":
+                scan_element(ele,content)
+            elif tag_name == "ol":
+                content.append("<br>")
+                li_elements = ele.query_selector_all("li")  # 获取所有 li 元素
+                for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
+                    li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
+                    content.append(f"{index}. {li_text}<br>")  # 添加序号和文本到 content
+            elif tag_name == "ul":
+                content.append("<br><br>")
+                li_elements = ele.query_selector_all("li")  # 获取所有 li 元素
+                for index, li in enumerate(li_elements, start=1):  # 遍历 li 元素并添加序号
+                    li_text = li.inner_text().strip()  # 获取 li 元素的文本内容
+                    content.append(f"{index}. {li_text}<br>")  # 添加序号和文本到 content
+                content.append("<br>")
+            elif tag_name == "li":
+                content.append("<br>")
+                content.append(ele.inner_text().strip())
+                content.append("<br>")
+            elif tag_name == "span":
+                span_text = ele.evaluate("el => el.textContent").strip()    
+                if span_text and span_text not in content:
+                    content.append(span_text)
+                scan_element(ele,content)
+
+
+                
+        content = "<br>".join(content)
+        save_content(content)
+        return render_template('index.html',content=content)
+    
+    except Exception as e:
+        print(f"扫描元素时出错: {e}")
+        traceback.print_exc()
+
 
 
 def load_wtt_from_url(url):
