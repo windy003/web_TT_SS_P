@@ -169,6 +169,14 @@ def scan_element(element,content):
             elif tag_name == "h1":
                 content.append(ele.evaluate("el => el.textContent").strip())
             elif tag_name == "div":
+                if ele.evaluate("el => el.classList.contains('weitoutiao-html')"):
+                    weitoutiao_html = ele.evaluate("el => el.outerHTML").strip()
+                    if weitoutiao_html and weitoutiao_html not in content:
+                        content.append(weitoutiao_html)
+                elif ele.evaluate("el => el.classList.contains('image-list')"):
+                    image_list = ele.evaluate("el => el.outerHTML").strip()
+                    if image_list and image_list not in content:
+                        content.append(image_list)
                 scan_element(ele,content)
             elif tag_name == "ol":
                 content.append("<br>")
