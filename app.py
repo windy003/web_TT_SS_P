@@ -66,6 +66,7 @@ def index():
     return render_template('index.html')
 
 def load_wenzhang_from_url(url):
+    print("使用的是load_wenzhang_from_url函数")
     with sync_playwright() as p:
         # 启动浏览器
         browser = p.chromium.launch(headless=False)  # 设置 headless=True 可以隐藏浏览器窗口
@@ -173,10 +174,6 @@ def scan_element(element,content):
                     weitoutiao_html = ele.evaluate("el => el.outerHTML").strip()
                     if weitoutiao_html and weitoutiao_html not in content:
                         content.append(weitoutiao_html)
-                elif ele.evaluate("el => el.classList.contains('image-list')"):
-                    image_list = ele.evaluate("el => el.outerHTML").strip()
-                    if image_list and image_list not in content:
-                        content.append(image_list)
                 scan_element(ele,content)
             elif tag_name == "ol":
                 content.append("<br>")
@@ -214,6 +211,7 @@ def scan_element(element,content):
 
 
 def load_wtt_from_url(url):
+    print("使用的是load_wtt_from_url函数")
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         context = browser.new_context(
