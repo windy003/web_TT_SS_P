@@ -152,6 +152,9 @@ def scan_element(element,content):
         for ele in element.query_selector_all(":scope > *"):
             tag_name = ele.evaluate("el => el.tagName").strip().lower()
             if tag_name == "p":
+                p_text = ele.evaluate("el => el.textContent").strip()
+                if p_text and p_text not in content:
+                    content.append(p_text)
                 scan_element(ele,content)
             elif tag_name == "img":
                 content.append(ele.evaluate("el => el.outerHTML"))  # 获取元素的完整 HTML
@@ -188,9 +191,6 @@ def scan_element(element,content):
                 content.append(ele.inner_text().strip())
                 content.append("<br>")
             elif tag_name == "span":
-                span_text = ele.evaluate("el => el.textContent").strip()    
-                if span_text and span_text not in content:
-                    content.append(span_text)
                 scan_element(ele,content)
 
 
