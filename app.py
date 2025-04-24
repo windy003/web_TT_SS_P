@@ -152,11 +152,6 @@ def scan_element(element,content):
         for ele in element.query_selector_all(":scope > *"):
             tag_name = ele.evaluate("el => el.tagName").strip().lower()
             if tag_name == "p":
-            # 处理 p 标签
-                # print(f"段落内容: {paragraph_text}")
-                paragraph_text = ele.evaluate("el => el.textContent").strip()
-                if paragraph_text and paragraph_text not in content:
-                    content.append(paragraph_text) # 将段落内容添加到正文中
                 scan_element(ele,content)
             elif tag_name == "img":
                 content.append(ele.evaluate("el => el.outerHTML"))  # 获取元素的完整 HTML
