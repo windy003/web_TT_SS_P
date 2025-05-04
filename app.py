@@ -30,7 +30,7 @@ def index():
 
     if request.method == 'POST':
         if 'url' in request.form:
-            url = request.form['url'].strip().split("%")[0]
+            url = request.form['url'].strip()
             print(f"url: {url}")
             if url.startswith("https://m.toutiao.com/is/")or url.startswith("https://toutiao.com/is/")or url.startswith("https://www.toutiao.com/article/") or url.startswith("https://toutiao.com/article/"):
                 is_wenzhang = True
@@ -146,6 +146,15 @@ def load_wenzhang_from_url(url):
             browser.close()
 
 
+def search_text_in_merged_content_str(content,text):
+    merged_content = "".join(content)
+    if text in merged_content:
+        return True
+    else:
+        return False
+
+
+
 def scan_element(element,content):
 
     try:
@@ -153,7 +162,7 @@ def scan_element(element,content):
             tag_name = ele.evaluate("el => el.tagName").strip().lower()
             if tag_name == "p":
                 p_text = ele.evaluate("el => el.textContent").strip()
-                if p_text and p_text not in content:
+                if p_text and p_text not in content and not search_text_in_merged_content_str(content,p_text):
                     content.append(p_text)
                 scan_element(ele,content)
             elif tag_name == "img":
@@ -162,7 +171,7 @@ def scan_element(element,content):
                 # 处理 section 标签
                 section_content = ele.evaluate("el => el.textContent").strip()
                 # print(f"段落内容: {section_content}")
-                if section_content and section_content not in content:
+                if section_content and section_content not in content and not search_text_in_merged_content_str(content,section_content):
                     content.append(section_content)   # 将段落内容添加到正文中
                 scan_element(ele,content)
             elif tag_name == "h1":
@@ -257,6 +266,7 @@ def save_url(url):
         # 写入 backup.json 文件
         with open("./backup/backup.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f"写入 backup.json 文件成功: {url}")
     except Exception as e:
         print(f"写入 backup.json 文件失败: {e}")
         traceback.print_exc()
@@ -276,6 +286,7 @@ def save_content(content):
         # 写入 backup.json 文件
         with open("./backup/backup.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
+        print(f"写入 backup.json 文件成功: {content}")
     except Exception as e:
         print(f"写入 backup.json 文件失败: {e}")
         traceback.print_exc()
