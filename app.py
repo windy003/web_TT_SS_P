@@ -201,6 +201,8 @@ def scan_element(element,content):
                 content.append("<br>")
             elif tag_name == "span":
                 scan_element(ele,content)
+            elif tag_name == "blockquote":
+                scan_element(ele,content)
 
 
                 
