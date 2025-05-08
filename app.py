@@ -103,10 +103,12 @@ def load_wenzhang_from_url(url):
                 print("点击展开按钮时出错:", e)
 
 
-            # 向下滚动以加载更多内容
-            for _ in range(10):  # 根据需要调整滚动次数
-                page.evaluate("window.scrollBy(0, window.innerHeight)")
-                time.sleep(1)
+
+
+            # # 向下滚动以加载更多内容
+            # for _ in range(10):  # 根据需要调整滚动次数
+            #     page.evaluate("window.scrollBy(0, window.innerHeight)")
+            #     time.sleep(1)
 
             content.append(title)
             # 获取文章发布时间
@@ -130,16 +132,67 @@ def load_wenzhang_from_url(url):
                     break
             
             content.append(author)
+
+
+            # 自动识别评论并向下滚动
+            try:
+                comment_selector = ".ttp-comment-wrapper"
+                
+                
+                # 最大滚动次数，防止无限循环
+                max_scroll_attempts = 30
+                scroll_count = 0
+                comment_visible = False
+                
+                while scroll_count < max_scroll_attempts and not comment_visible:
+                    # 检查评论区是否在视口中
+                    comment_elements = page.query_selector_all(comment_selector)
+                    for comment_element in comment_elements:
+                        # 使用 JavaScript 判断元素是否在视口中
+                        is_in_viewport = comment_element.evaluate("""
+                            el => {
+                                const rect = el.getBoundingClientRect();
+                                return (
+                                    rect.top >= 0 &&
+                                    rect.left >= 0 &&
+                                    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+                                    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                                );
+                            }
+                        """)
+                        if is_in_viewport:
+                            print("评论区域已出现在屏幕上")
+                            comment_visible = True
+                            break
+                    
+                    if comment_visible:
+                        break
+                    
+                    # 向下滚动一个窗口高度
+                    page.evaluate("window.scrollBy(0, window.innerHeight)")
+                    scroll_count += 1
+                    print(f"滚动次数: {scroll_count}")
+                    
+                    # 等待一小段时间让内容加载
+                    time.sleep(1)
+                
+                        
+            except Exception as e:
+                print(f"自动识别评论并向下滚动时出错: {e}")
+                traceback.print_exc()
+
+
+
             # 获取文章正文内容
             article_element = page.query_selector("article")
-            
+                
             if article_element:
-               return scan_element(article_element,content)
-            
-            
-            
+                return scan_element(article_element,content)
+                
+                
+                
         except Exception as e:
-            print(f"爬取文章时出错: {e}")
+            print(f"出错: {e}")
             traceback.print_exc()
             
         finally:
@@ -288,7 +341,7 @@ def save_content(content):
         # 写入 backup.json 文件
         with open("./backup/backup.json", "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"写入 backup.json 文件成功: {content}")
+        print(f"写入 backup.json 文件成功")
     except Exception as e:
         print(f"写入 backup.json 文件失败: {e}")
         traceback.print_exc()
