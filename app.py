@@ -136,7 +136,7 @@ def load_wenzhang_from_url(url):
 
             # 自动识别评论并向下滚动
             try:
-                comment_selector = ".ttp-comment-wrapper"
+                comment_selector = ".ttp-comment-wrapper, .ttp-comment-block,.comment-folded"
                 
                 
                 # 最大滚动次数，防止无限循环
@@ -153,10 +153,10 @@ def load_wenzhang_from_url(url):
                             el => {
                                 const rect = el.getBoundingClientRect();
                                 return (
-                                    rect.top >= 0 &&
-                                    rect.left >= 0 &&
-                                    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
-                                    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+                                    rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
+                                    rect.bottom > 0 &&
+                                    rect.left < (window.innerWidth || document.documentElement.clientWidth) &&
+                                    rect.right > 0
                                 );
                             }
                         """)
@@ -174,7 +174,7 @@ def load_wenzhang_from_url(url):
                     print(f"滚动次数: {scroll_count}")
                     
                     # 等待一小段时间让内容加载
-                    time.sleep(1)
+                    time.sleep(2)
                 
                         
             except Exception as e:
@@ -195,8 +195,8 @@ def load_wenzhang_from_url(url):
             print(f"出错: {e}")
             traceback.print_exc()
             
-        finally:
-            browser.close()
+        # finally:
+        #     browser.close()
 
 
 def search_text_in_merged_content_str(content,text):
