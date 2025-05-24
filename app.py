@@ -237,47 +237,6 @@ def scan_element(element,content):
 
 
 
-def load_wtt_from_url(url):
-    print("使用的是load_wtt_from_url函数")
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=False)
-        context = browser.new_context(
-            user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36"
-        )
-        page = context.new_page()   
-
-        try:
-            page.goto(url, wait_until="networkidle", timeout=60000)
-            
-            # 等待文章内容加载
-            page.wait_for_selector("article", state="visible", timeout=10000)
-
-            content = ""
-
-            article_element = page.query_selector("article")
-            if article_element:
-                # 遍历 article_element 内的所有标签
-                for element in article_element.query_selector_all(":scope > *"):  # 获取 article 的直接子元素
-                    tag_name = element.evaluate("el => el.tagName").strip().lower()
-                    if tag_name == "div" and element.evaluate("el => el.classList.contains('weitoutiao-html')"):
-                        content += element.inner_text().strip()
-                    elif tag_name == "div" and element.evaluate("el => el.classList.contains('image-list')"):
-                        content += element.inner_html()
-            
-
-            generate_static_html(content)
-
-            return render_template('index.html',content=content)
-
-        except Exception as e:
-            print(f"爬取文章时出错: {e}")
-            traceback.print_exc()
-        finally:
-            browser.close()
-
-
-
-
 def generate_static_html(content):
     """生成静态HTML文件"""
     try:
