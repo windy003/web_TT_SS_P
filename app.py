@@ -40,15 +40,15 @@ def load_wenzhang_from_url(url):
             # 访问文章链接
             print(f"正在访问: {url}")
 
-                # 设置页面缩放比例到最小（10%）
 
 
 
             # 等待页面加载
             page.goto(url, wait_until="networkidle", timeout=60000)
 
-            page.evaluate("document.body.style.zoom = '0.1'")
 
+            # 设置页面缩放比例到最小（10%）
+            page.evaluate("document.body.style.zoom = '0.1'")
             
             # 等待文章内容加载
             page.wait_for_selector("article", state="visible", timeout=10000)
