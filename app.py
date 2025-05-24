@@ -10,60 +10,21 @@ import traceback
 from playwright.sync_api import sync_playwright
 import gunicorn
 import traceback
+from flask import send_file
 
 
 app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
-
-
-    url_old = ""
-    content_old = ""
-    # 读取 backup.json 文件
-    if os.path.exists("./backup/backup.json"):
-        with open("./backup/backup.json", "r", encoding="utf-8") as f:
-            data = json.load(f)
-            url_old = data.get("url", "").strip()
-            print(f"url_old: {url_old}")
-            content_old = data.get("content", "")
-
     if request.method == 'POST':
         if 'url' in request.form:
             url = request.form['url'].strip()
-            print(f"url: {url}")
-            if url.startswith("https://m.toutiao.com/is/")or url.startswith("https://toutiao.com/is/")or url.startswith("https://www.toutiao.com/article/") or url.startswith("https://toutiao.com/article/"):
-                is_wenzhang = True
-            else:
-                is_wenzhang = False
-            if url_old:
-                if url == url_old:
-                    print("url 相同,使用content_old")
-                    return render_template('index.html',content=content_old)
-                else:
-                    if is_wenzhang:
-                        save_url(url)
-                        print(f"url: {url}")
-                        print(f"old_url: {url_old}")
-                        return load_wenzhang_from_url(url)
-                    else:
-                        save_url(url)
-                        print(f"url: {url}")
-                        print(f"old_url: {url_old}")
-                        return load_wtt_from_url(url)
-            else:
-                if is_wenzhang:
-                    save_url(url)
-                    print(f"url: {url}")
-                    print(f"old_url: {url_old}")
-                    return load_wenzhang_from_url(url)
-                else:
-                    save_url(url)
-                    print(f"url: {url}")
-                    print(f"old_url: {url_old}")
-                    return load_wtt_from_url(url)
+            return  load_wenzhang_from_url(url)
+
 
     return render_template('index.html')
+
 
 def load_wenzhang_from_url(url):
     print("使用的是load_wenzhang_from_url函数")
@@ -187,9 +148,15 @@ def load_wenzhang_from_url(url):
             article_element = page.query_selector("article")
                 
             if article_element:
-                return scan_element(article_element,content)
+                content_final = "<br>".join(scan_element(article_element, content))
                 
-                
+
+                generate_static_html(content_final)
+
+                with open("./tmp/tmp.txt", "w", encoding="utf-8") as f:
+                    f.write(content_final)
+
+                return render_template('index.html',content=content_final)
                 
         except Exception as e:
             print(f"出错: {e}")
@@ -257,15 +224,16 @@ def scan_element(element,content):
             elif tag_name == "blockquote":
                 scan_element(ele,content)
 
-
-                
-        content = "<br>".join(content)
-        save_content(content)
-        return render_template('index.html',content=content)
+        return content
+    
+        
     
     except Exception as e:
         print(f"扫描元素时出错: {e}")
         traceback.print_exc()
+
+    
+
 
 
 
@@ -295,8 +263,10 @@ def load_wtt_from_url(url):
                         content += element.inner_text().strip()
                     elif tag_name == "div" and element.evaluate("el => el.classList.contains('image-list')"):
                         content += element.inner_html()
-                
-            save_content(content)
+            
+
+            generate_static_html(content)
+
             return render_template('index.html',content=content)
 
         except Exception as e:
@@ -306,47 +276,67 @@ def load_wtt_from_url(url):
             browser.close()
 
 
-def save_url(url):
+
+
+def generate_static_html(content):
+    """生成静态HTML文件"""
     try:
-        # 如果 backup.json 文件存在，读取现有数据
-        if os.path.exists("./backup/backup.json"):
-            with open("./backup/backup.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
+        
+        # 读取模板文件
+        with open("./templates/index.html", "r", encoding="utf-8") as f:
+            template_content = f.read()
+        
+        # 替换模板中的内容
+        # 移除Flask模板语法，替换为静态内容
+        static_html = template_content.replace(
+            "{{ url_for('static', filename='180x180.png') }}", 
+            "../static/180x180.png"
+        )
+        
+        # 添加内容到页面中
+        if content:
+            content_section = f'''
+                <div id="div_tag">
+                {content}
+                </div>
+            '''
         else:
-            data = {}
+            content_section = '''
+            <div id="div_tag">
+                暂无内容
+            </div>
+            '''
 
-        # 更新 url 的值
-        data["url"] = url
+        # 正则表达式（贪婪模式）
+        pattern = re.compile(r'<div id="div_tag">.*?</div>', re.DOTALL)
 
-        # 写入 backup.json 文件
-        with open("./backup/backup.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"写入 backup.json 文件成功: {url}")
+        # 查找匹配
+        match = pattern.search(static_html)
+
+        # 如果有匹配项，替换匹配的内容
+        if match:
+            # 从匹配对象中提取匹配的字符串
+            matched_text = match.group()
+            # 替换匹配的内容
+            static_html = static_html.replace(matched_text, content_section)
+        # 写入静态HTML文件
+        with open("./backup/latest.html", "w", encoding="utf-8") as f:
+            f.write(static_html)
+        
+       
+        print(f"静态HTML文件生成成功")
+        
     except Exception as e:
-        print(f"写入 backup.json 文件失败: {e}")
+        print(f"生成静态HTML文件失败: {e}")
         traceback.print_exc()
 
-def save_content(content):
-    try:
-        # 如果 backup.json 文件存在，读取现有数据
-        if os.path.exists("./backup/backup.json"):
-            with open("./backup/backup.json", "r", encoding="utf-8") as f:
-                data = json.load(f)
-        else:
-            data = {}
-
-        # 更新 content 的值
-        data["content"] = content
-
-        # 写入 backup.json 文件
-        with open("./backup/backup.json", "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-        print(f"写入 backup.json 文件成功")
-    except Exception as e:
-        print(f"写入 backup.json 文件失败: {e}")
-        traceback.print_exc()
 
 
+
+@app.route('/latest')
+def serve_latest():
+    if os.path.exists("./backup/latest.html"):
+        return send_file("./backup/latest.html")
 
 
 

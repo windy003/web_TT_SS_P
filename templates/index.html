@@ -538,13 +538,14 @@
             <form method="POST" action="/" id="urlForm">
                 <input type="text" id="urlInput" name="url" placeholder="或直接输入头条文章的网址" style="width: 300px;">
                 <button class="jznr_btn" type="submit" style="margin-right:10px;">加载内容</button>
+                <button class="jznr_btn" type="button" onclick="window.location.href='/latest'">最近内容</button>
             </form>
 
         </div>
         
         
         <!-- 使用div替代p标签 -->
-        <div id="div_tag" >
+        <div id="div_tag">
             {% if title %}<h2>{{ title }}</h2>{% endif %}
             
             
