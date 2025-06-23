@@ -44,7 +44,7 @@ def load_wenzhang_from_url(url):
 
 
             # 等待页面加载
-            page.goto(url, wait_until="networkidle", timeout=60000)
+            page.goto(url, wait_until="domcontentloaded", timeout=60000)
 
 
             
